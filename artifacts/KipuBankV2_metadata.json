@@ -1,0 +1,1900 @@
+{
+	"compiler": {
+		"version": "0.8.30+commit.73712a01"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "owner_",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "bankCapUsd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "withdrawLimitUsd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "ethUsdFeed",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"inputs": [],
+				"name": "AccessControlBadConfirmation",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "neededRole",
+						"type": "bytes32"
+					}
+				],
+				"name": "AccessControlUnauthorizedAccount",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "BadPrice",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "DirectEthNotAllowed",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "EnforcedPause",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ErrAliasTaken",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "attemptedUsd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "capUsd8",
+						"type": "uint256"
+					}
+				],
+				"name": "ErrCapExceeded",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ErrContactNotFound",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "available",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "requested",
+						"type": "uint256"
+					}
+				],
+				"name": "ErrInsufficientBalance",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ErrInvalidContact",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "requestedUsd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "limitUsd8",
+						"type": "uint256"
+					}
+				],
+				"name": "ErrWithdrawLimitUSD",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ErrZeroAmount",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ExpectedPause",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					}
+				],
+				"name": "OwnableInvalidOwner",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "OwnableUnauthorizedAccount",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ReentrancyGuardReentrantCall",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "SafeERC20FailedOperation",
+				"type": "error"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "quoteWei",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "sentWei",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "maxBps",
+						"type": "uint256"
+					}
+				],
+				"name": "SlippageExceeded",
+				"type": "error"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "newEthLimit",
+						"type": "uint256"
+					}
+				],
+				"name": "ContactLimitUpdated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					}
+				],
+				"name": "ContactRemoved",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "ethLimit",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "usdLimit",
+						"type": "uint256"
+					}
+				],
+				"name": "ContactSet",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "newBalanceRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "Deposit",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "oldFeed",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "newFeed",
+						"type": "address"
+					}
+				],
+				"name": "FeedUpdated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "InternalTransfer",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "previousOwner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "OwnershipTransferred",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "Paused",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "previousAdminRole",
+						"type": "bytes32"
+					},
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "newAdminRole",
+						"type": "bytes32"
+					}
+				],
+				"name": "RoleAdminChanged",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					}
+				],
+				"name": "RoleGranted",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "sender",
+						"type": "address"
+					}
+				],
+				"name": "RoleRevoked",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint8",
+						"name": "decimals",
+						"type": "uint8"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "feed",
+						"type": "address"
+					}
+				],
+				"name": "TokenRegistered",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "Unpaused",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "newBalanceRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "Withdrawal",
+				"type": "event"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "fallback"
+			},
+			{
+				"inputs": [],
+				"name": "BANK_CAP_USD8",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "DEFAULT_ADMIN_ROLE",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "PAUSER_ROLE",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "RISK_ROLE",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "VERSION",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "",
+						"type": "string"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "WITHDRAW_LIMIT_USD8",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "balanceOf",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "balanceRaw",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "deposit",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "maxSlippageBps",
+						"type": "uint256"
+					}
+				],
+				"name": "depositEthByUsd",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					}
+				],
+				"name": "getContact",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					},
+					{
+						"internalType": "bool",
+						"name": "exists",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					}
+				],
+				"name": "getContactByAlias",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"internalType": "bool",
+						"name": "exists",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					}
+				],
+				"name": "getRoleAdmin",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "grantRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "hasRole",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "pause",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "paused",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "priceFeedUsd",
+				"outputs": [
+					{
+						"internalType": "contract AggregatorV3Interface",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "priceUsd8",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "p8",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					}
+				],
+				"name": "quoteWeiForUsd",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "weiReq",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "feed",
+						"type": "address"
+					}
+				],
+				"name": "registerToken",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					}
+				],
+				"name": "removeContact",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "renounceOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "callerConfirmation",
+						"type": "address"
+					}
+				],
+				"name": "renounceRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "role",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "revokeRole",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "ethLimit",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "usdLimit",
+						"type": "uint256"
+					}
+				],
+				"name": "setContact",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes4",
+						"name": "interfaceId",
+						"type": "bytes4"
+					}
+				],
+				"name": "supportsInterface",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "toUnit6",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "amount6",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "toUsd8",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "tokenDecimals",
+				"outputs": [
+					{
+						"internalType": "uint8",
+						"name": "",
+						"type": "uint8"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalBankUsd8",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					}
+				],
+				"name": "totalOf",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "totalRaw",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "transferInternal",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "transferInternalByAlias",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "transferOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "unpause",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "contact",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "newLimit",
+						"type": "uint256"
+					}
+				],
+				"name": "updateContactEthLimit",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amountRaw",
+						"type": "uint256"
+					}
+				],
+				"name": "withdraw",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "receive"
+			}
+		],
+		"devdoc": {
+			"author": "Facundo Delgado",
+			"details": "- Contabilidad por token: `address(0)` representa ETH; ERC-20 vía `SafeERC20`. - Límites en USD (8 decimales) con Chainlink Price Feeds por token. - Normalización utilitaria a 6 dec (USDC-like) para UI. - Seguridad: CEI, `Ownable2Step`, `AccessControl`, `Pausable`, `ReentrancyGuard`. - Las transferencias internas no mueven tokens on-chain; solo saldos internos.",
+			"errors": {
+				"AccessControlBadConfirmation()": [
+					{
+						"details": "The caller of a function is not the expected one. NOTE: Don't confuse with {AccessControlUnauthorizedAccount}."
+					}
+				],
+				"AccessControlUnauthorizedAccount(address,bytes32)": [
+					{
+						"details": "The `account` is missing a role."
+					}
+				],
+				"EnforcedPause()": [
+					{
+						"details": "The operation failed because the contract is paused."
+					}
+				],
+				"ErrCapExceeded(uint256,uint256)": [
+					{
+						"params": {
+							"attemptedUsd8": "Total USD8 post-operación.",
+							"capUsd8": "CAP configurado en USD8."
+						}
+					}
+				],
+				"ErrInsufficientBalance(uint256,uint256)": [
+					{
+						"params": {
+							"available": "Disponible.",
+							"requested": "Solicitado."
+						}
+					}
+				],
+				"ErrWithdrawLimitUSD(uint256,uint256)": [
+					{
+						"params": {
+							"limitUsd8": "Límite en USD8.",
+							"requestedUsd8": "Monto solicitado en USD8."
+						}
+					}
+				],
+				"ExpectedPause()": [
+					{
+						"details": "The operation failed because the contract is not paused."
+					}
+				],
+				"OwnableInvalidOwner(address)": [
+					{
+						"details": "The owner is not a valid owner account. (eg. `address(0)`)"
+					}
+				],
+				"OwnableUnauthorizedAccount(address)": [
+					{
+						"details": "The caller account is not authorized to perform an operation."
+					}
+				],
+				"ReentrancyGuardReentrantCall()": [
+					{
+						"details": "Unauthorized reentrant call."
+					}
+				],
+				"SafeERC20FailedOperation(address)": [
+					{
+						"details": "An operation with an ERC-20 token failed."
+					}
+				],
+				"SlippageExceeded(uint256,uint256,uint256)": [
+					{
+						"params": {
+							"maxBps": "Tolerancia en bps.",
+							"quoteWei": "Wei cotizados.",
+							"sentWei": "Wei enviados."
+						}
+					}
+				]
+			},
+			"events": {
+				"ContactLimitUpdated(address,address,uint256)": {
+					"params": {
+						"contact": "Dirección del contacto.",
+						"newEthLimit": "Nuevo límite en wei.",
+						"owner": "Titular."
+					}
+				},
+				"ContactRemoved(address,address,string)": {
+					"params": {
+						"alias_": "Alias previo.",
+						"contact": "Dirección del contacto.",
+						"owner": "Titular."
+					}
+				},
+				"ContactSet(address,address,string,uint256,uint256)": {
+					"params": {
+						"alias_": "Alias legible.",
+						"contact": "Dirección del contacto.",
+						"ethLimit": "Límite por transferencia interna en wei.",
+						"owner": "Titular.",
+						"usdLimit": "Límite “equivalente USD” en wei."
+					}
+				},
+				"Deposit(address,address,uint256,uint256)": {
+					"params": {
+						"amountRaw": "Monto crudo acreditado.",
+						"newBalanceRaw": "Nuevo saldo crudo del usuario.",
+						"token": "Dirección del activo (`address(0)`=ETH).",
+						"user": "Remitente del depósito."
+					}
+				},
+				"FeedUpdated(address,address,address)": {
+					"params": {
+						"newFeed": "Nuevo feed.",
+						"oldFeed": "Feed anterior.",
+						"token": "Dirección del token."
+					}
+				},
+				"InternalTransfer(address,address,address,uint256)": {
+					"params": {
+						"amountRaw": "Monto crudo transferido.",
+						"from": "Emisor interno.",
+						"to": "Receptor interno.",
+						"token": "Dirección del activo."
+					}
+				},
+				"Paused(address)": {
+					"details": "Emitted when the pause is triggered by `account`."
+				},
+				"RoleAdminChanged(bytes32,bytes32,bytes32)": {
+					"details": "Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole` `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite {RoleAdminChanged} not being emitted to signal this."
+				},
+				"RoleGranted(bytes32,address,address)": {
+					"details": "Emitted when `account` is granted `role`. `sender` is the account that originated the contract call. This account bears the admin role (for the granted role). Expected in cases where the role was granted using the internal {AccessControl-_grantRole}."
+				},
+				"RoleRevoked(bytes32,address,address)": {
+					"details": "Emitted when `account` is revoked `role`. `sender` is the account that originated the contract call:   - if using `revokeRole`, it is the admin role bearer   - if using `renounceRole`, it is the role bearer (i.e. `account`)"
+				},
+				"TokenRegistered(address,uint8,address)": {
+					"params": {
+						"decimals": "Decimales del token.",
+						"feed": "Dirección del feed Chainlink token/USD.",
+						"token": "Dirección del token (no ETH)."
+					}
+				},
+				"Unpaused(address)": {
+					"details": "Emitted when the pause is lifted by `account`."
+				},
+				"Withdrawal(address,address,uint256,uint256)": {
+					"params": {
+						"amountRaw": "Monto crudo debitado.",
+						"newBalanceRaw": "Nuevo saldo crudo del usuario.",
+						"token": "Dirección del activo.",
+						"user": "Retirante."
+					}
+				}
+			},
+			"kind": "dev",
+			"methods": {
+				"balanceOf(address,address)": {
+					"params": {
+						"token": "Dirección del token.",
+						"user": "Cuenta."
+					},
+					"returns": {
+						"balanceRaw": "Saldo crudo."
+					}
+				},
+				"constructor": {
+					"params": {
+						"bankCapUsd8": "CAP global en USD8.",
+						"ethUsdFeed": "Dirección del feed ETH/USD.",
+						"owner_": "Dueño inicial (admin de roles).",
+						"withdrawLimitUsd8": "Límite por retiro en USD8."
+					}
+				},
+				"deposit(address,uint256)": {
+					"details": "Para ETH `token=address(0)` y `msg.value == amountRaw`.",
+					"params": {
+						"amountRaw": "Monto crudo a acreditar.",
+						"token": "Dirección del token."
+					}
+				},
+				"depositEthByUsd(uint256,uint256)": {
+					"details": "Requiere `whenNotPaused`. Verifica slippage y `BANK_CAP_USD8`.",
+					"params": {
+						"maxSlippageBps": "Tolerancia en bps (100 = 1%).",
+						"usd8": "Objetivo en USD8."
+					}
+				},
+				"getContact(address,address)": {
+					"params": {
+						"contact": "Dirección del contacto.",
+						"owner": "Titular."
+					},
+					"returns": {
+						"alias_": "Alias actual.",
+						"exists": "Bandera de existencia."
+					}
+				},
+				"getContactByAlias(address,string)": {
+					"params": {
+						"alias_": "Alias a resolver.",
+						"owner": "Titular."
+					},
+					"returns": {
+						"contact": "Dirección resultante.",
+						"exists": "Bandera de existencia."
+					}
+				},
+				"getRoleAdmin(bytes32)": {
+					"details": "Returns the admin role that controls `role`. See {grantRole} and {revokeRole}. To change a role's admin, use {_setRoleAdmin}."
+				},
+				"grantRole(bytes32,address)": {
+					"details": "Grants `role` to `account`. If `account` had not been already granted `role`, emits a {RoleGranted} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleGranted} event."
+				},
+				"hasRole(bytes32,address)": {
+					"details": "Returns `true` if `account` has been granted `role`."
+				},
+				"owner()": {
+					"details": "Returns the address of the current owner."
+				},
+				"pause()": {
+					"details": "Requiere `PAUSER_ROLE`."
+				},
+				"paused()": {
+					"details": "Returns true if the contract is paused, and false otherwise."
+				},
+				"priceUsd8(address)": {
+					"params": {
+						"token": "Dirección del token (`address(0)`=ETH)."
+					},
+					"returns": {
+						"p8": "Precio USD8."
+					}
+				},
+				"quoteWeiForUsd(uint256)": {
+					"params": {
+						"usd8": "Monto en USD8."
+					},
+					"returns": {
+						"weiReq": "Wei requeridos (redondeo hacia arriba)."
+					}
+				},
+				"registerToken(address,address)": {
+					"details": "ETH ya está pre-registrado (`address(0)`).",
+					"params": {
+						"feed": "Dirección del Aggregator token/USD.",
+						"token": "Dirección del token (no ETH)."
+					}
+				},
+				"removeContact(address)": {
+					"params": {
+						"contact": "Dirección del contacto a remover."
+					}
+				},
+				"renounceOwnership()": {
+					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+				},
+				"renounceRole(bytes32,address)": {
+					"details": "Revokes `role` from the calling account. Roles are often managed via {grantRole} and {revokeRole}: this function's purpose is to provide a mechanism for accounts to lose their privileges if they are compromised (such as when a trusted device is misplaced). If the calling account had been revoked `role`, emits a {RoleRevoked} event. Requirements: - the caller must be `callerConfirmation`. May emit a {RoleRevoked} event."
+				},
+				"revokeRole(bytes32,address)": {
+					"details": "Revokes `role` from `account`. If `account` had been granted `role`, emits a {RoleRevoked} event. Requirements: - the caller must have ``role``'s admin role. May emit a {RoleRevoked} event."
+				},
+				"setContact(address,string,uint256,uint256)": {
+					"params": {
+						"alias_": "Alias legible.",
+						"contact": "Dirección del contacto.",
+						"ethLimit": "Límite por transferencia en wei (0 = sin tope).",
+						"usdLimit": "Límite “equivalente USD” en wei (0 = sin tope)."
+					}
+				},
+				"supportsInterface(bytes4)": {
+					"details": "Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section] to learn more about how these ids are created. This function call must use less than 30 000 gas."
+				},
+				"toUnit6(address,uint256)": {
+					"params": {
+						"amountRaw": "Monto crudo.",
+						"token": "Dirección del token."
+					},
+					"returns": {
+						"amount6": "Monto en 6 dec."
+					}
+				},
+				"toUsd8(address,uint256)": {
+					"params": {
+						"amountRaw": "Monto crudo (wei o unidades ERC-20).",
+						"token": "Dirección del token."
+					},
+					"returns": {
+						"usd8": "Monto equivalente en USD8."
+					}
+				},
+				"totalOf(address)": {
+					"params": {
+						"token": "Dirección del token."
+					},
+					"returns": {
+						"totalRaw": "Suma de saldos crudos."
+					}
+				},
+				"transferInternal(address,address,uint256)": {
+					"details": "No mueve el activo on-chain; solo contabilidad.",
+					"params": {
+						"amountRaw": "Monto crudo.",
+						"to": "Receptor interno.",
+						"token": "Dirección del token."
+					}
+				},
+				"transferInternalByAlias(address,string,uint256)": {
+					"details": "Resuelve alias a contacto y aplica límites si es ETH.",
+					"params": {
+						"alias_": "Alias del contacto.",
+						"amountRaw": "Monto crudo.",
+						"token": "Dirección del token."
+					}
+				},
+				"transferOwnership(address)": {
+					"details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+				},
+				"unpause()": {
+					"details": "Requiere `PAUSER_ROLE`."
+				},
+				"updateContactEthLimit(address,uint256)": {
+					"params": {
+						"contact": "Dirección del contacto.",
+						"newLimit": "Nuevo límite en wei (0 = sin tope)."
+					}
+				},
+				"withdraw(address,uint256)": {
+					"details": "Valida `WITHDRAW_LIMIT_USD8` contra Chainlink.",
+					"params": {
+						"amountRaw": "Monto crudo a debitar.",
+						"token": "Dirección del token."
+					}
+				}
+			},
+			"stateVariables": {
+				"_aliasIndex": {
+					"details": "owner => keccak256(alias) => contacto."
+				},
+				"_balRaw": {
+					"details": "Saldos crudos por token (wei o unidades del ERC-20)."
+				},
+				"_contacts": {
+					"details": "owner => contacto => datos."
+				},
+				"_totalRaw": {
+					"details": "Total crudo por token."
+				}
+			},
+			"title": "KipuBankV2",
+			"version": 1
+		},
+		"userdoc": {
+			"errors": {
+				"BadPrice()": [
+					{
+						"notice": "Precio inválido/no positivo desde el feed."
+					}
+				],
+				"DirectEthNotAllowed()": [
+					{
+						"notice": "Depósitos directos a `receive()` no permitidos."
+					}
+				],
+				"ErrAliasTaken()": [
+					{
+						"notice": "Alias ya utilizado."
+					}
+				],
+				"ErrCapExceeded(uint256,uint256)": [
+					{
+						"notice": "Se supera el tope global del banco."
+					}
+				],
+				"ErrContactNotFound()": [
+					{
+						"notice": "Contacto inexistente."
+					}
+				],
+				"ErrInsufficientBalance(uint256,uint256)": [
+					{
+						"notice": "Saldo insuficiente."
+					}
+				],
+				"ErrInvalidContact()": [
+					{
+						"notice": "Contacto inválido (dirección cero)."
+					}
+				],
+				"ErrWithdrawLimitUSD(uint256,uint256)": [
+					{
+						"notice": "Excede el límite de retiro en USD."
+					}
+				],
+				"ErrZeroAmount()": [
+					{
+						"notice": "Monto cero no permitido."
+					}
+				],
+				"SlippageExceeded(uint256,uint256,uint256)": [
+					{
+						"notice": "Slippage superado en depósito por USD."
+					}
+				]
+			},
+			"events": {
+				"ContactLimitUpdated(address,address,uint256)": {
+					"notice": "Límite ETH del contacto actualizado."
+				},
+				"ContactRemoved(address,address,string)": {
+					"notice": "Contacto eliminado."
+				},
+				"ContactSet(address,address,string,uint256,uint256)": {
+					"notice": "Contacto creado/actualizado."
+				},
+				"Deposit(address,address,uint256,uint256)": {
+					"notice": "Depósito exitoso."
+				},
+				"FeedUpdated(address,address,address)": {
+					"notice": "Actualización de feed de precio."
+				},
+				"InternalTransfer(address,address,address,uint256)": {
+					"notice": "Transferencia interna entre bóvedas."
+				},
+				"TokenRegistered(address,uint8,address)": {
+					"notice": "Registro/alta de token soportado."
+				},
+				"Withdrawal(address,address,uint256,uint256)": {
+					"notice": "Retiro exitoso."
+				}
+			},
+			"kind": "user",
+			"methods": {
+				"BANK_CAP_USD8()": {
+					"notice": "Tope global del banco en USD con 8 dec (1 USD = 1e8)."
+				},
+				"PAUSER_ROLE()": {
+					"notice": "Rol para pausar/reanudar."
+				},
+				"RISK_ROLE()": {
+					"notice": "Rol para gobernar riesgo (feeds, tokens, parámetros)."
+				},
+				"VERSION()": {
+					"notice": "Versión del contrato."
+				},
+				"WITHDRAW_LIMIT_USD8()": {
+					"notice": "Límite por retiro en USD con 8 dec."
+				},
+				"balanceOf(address,address)": {
+					"notice": "Saldo crudo de `user` para `token`."
+				},
+				"constructor": {
+					"notice": "Inicializa roles, límites en USD y feed ETH/USD."
+				},
+				"deposit(address,uint256)": {
+					"notice": "Depósito genérico (ETH o ERC-20)."
+				},
+				"depositEthByUsd(uint256,uint256)": {
+					"notice": "Deposita ETH pensando en USD; guarda wei internos."
+				},
+				"getContact(address,address)": {
+					"notice": "Devuelve datos básicos del contacto."
+				},
+				"getContactByAlias(address,string)": {
+					"notice": "Resuelve un alias a dirección de contacto."
+				},
+				"pause()": {
+					"notice": "Pausa operaciones sensibles."
+				},
+				"priceFeedUsd(address)": {
+					"notice": "Feed Chainlink token/USD por activo."
+				},
+				"priceUsd8(address)": {
+					"notice": "Obtiene precio token/USD normalizado a 8 decimales."
+				},
+				"quoteWeiForUsd(uint256)": {
+					"notice": "Cotiza wei necesarios para `usd8` USD usando feed ETH/USD."
+				},
+				"registerToken(address,address)": {
+					"notice": "Registra o actualiza un token ERC-20 y su feed USD."
+				},
+				"removeContact(address)": {
+					"notice": "Elimina un contacto del emisor."
+				},
+				"setContact(address,string,uint256,uint256)": {
+					"notice": "Crea o actualiza un contacto del emisor."
+				},
+				"toUnit6(address,uint256)": {
+					"notice": "Normaliza a 6 dec para UI (USDC-like)."
+				},
+				"toUsd8(address,uint256)": {
+					"notice": "Convierte monto crudo de `token` a USD8 usando Chainlink."
+				},
+				"tokenDecimals(address)": {
+					"notice": "Decimales del activo (`tokenDecimals[address(0)] = 18 para ETH`)."
+				},
+				"totalBankUsd8()": {
+					"notice": "Tracking aproximado del total del banco en USD8 (a precio de cada operación)."
+				},
+				"totalOf(address)": {
+					"notice": "Total crudo retenido por token."
+				},
+				"transferInternal(address,address,uint256)": {
+					"notice": "Transfiere internamente `amountRaw` a `to` para `token`."
+				},
+				"transferInternalByAlias(address,string,uint256)": {
+					"notice": "Transfiere internamente por alias del emisor."
+				},
+				"unpause()": {
+					"notice": "Reanuda operaciones."
+				},
+				"updateContactEthLimit(address,uint256)": {
+					"notice": "Actualiza el límite ETH del contacto."
+				},
+				"withdraw(address,uint256)": {
+					"notice": "Retiro genérico (ETH o ERC-20)."
+				}
+			},
+			"notice": "Bóveda custodial multi-token con contactos y transferencias internas.",
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/KipuBank.sol": "KipuBankV2"
+		},
+		"evmVersion": "prague",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol": {
+			"keccak256": "0x257a8d28fa83d3d942547c8e129ef465e4b5f3f31171e7be4739a4c98da6b4f0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6d39e11b1dc7b9b8ccdabbc9be442ab7cda4a81c748f57e316dcb1bcb4a28bf9",
+				"dweb:/ipfs/QmaG6vz6W6iEUBsbHSBob5mdcitYxWjoygxREHpsJHfWrS"
+			]
+		},
+		"@openzeppelin/contracts/access/AccessControl.sol": {
+			"keccak256": "0x1a6b4f6b7798ab80929d491b89d5427a9b3338c0fd1acd0ba325f69c6f1646af",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://7bb7f346c12a14dc622bc105ce3c47202fbc89f4b153a28a63bb68193297330c",
+				"dweb:/ipfs/QmagwF8P3bUBXwdo159ueEnY9dLSvEWwK24kk2op58egwG"
+			]
+		},
+		"@openzeppelin/contracts/access/IAccessControl.sol": {
+			"keccak256": "0xbff9f59c84e5337689161ce7641c0ef8e872d6a7536fbc1f5133f128887aba3c",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b308f882e796f7b79c9502deacb0a62983035c6f6f4e962b319ba6a1f4a77d3d",
+				"dweb:/ipfs/QmaWCW7ahEQqFjwhSUhV7Ae7WhfNvzSpE7DQ58hvEooqPL"
+			]
+		},
+		"@openzeppelin/contracts/access/Ownable.sol": {
+			"keccak256": "0xff6d0bb2e285473e5311d9d3caacb525ae3538a80758c10649a4d61029b017bb",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://8ed324d3920bb545059d66ab97d43e43ee85fd3bd52e03e401f020afb0b120f6",
+				"dweb:/ipfs/QmfEckWLmZkDDcoWrkEvMWhms66xwTLff9DDhegYpvHo1a"
+			]
+		},
+		"@openzeppelin/contracts/interfaces/IERC1363.sol": {
+			"keccak256": "0xd5ea07362ab630a6a3dee4285a74cf2377044ca2e4be472755ad64d7c5d4b69d",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://da5e832b40fc5c3145d3781e2e5fa60ac2052c9d08af7e300dc8ab80c4343100",
+				"dweb:/ipfs/QmTzf7N5ZUdh5raqtzbM11yexiUoLC9z3Ws632MCuycq1d"
+			]
+		},
+		"@openzeppelin/contracts/interfaces/IERC165.sol": {
+			"keccak256": "0x0afcb7e740d1537b252cb2676f600465ce6938398569f09ba1b9ca240dde2dfc",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1c299900ac4ec268d4570ecef0d697a3013cd11a6eb74e295ee3fbc945056037",
+				"dweb:/ipfs/Qmab9owJoxcA7vJT5XNayCMaUR1qxqj1NDzzisduwaJMcZ"
+			]
+		},
+		"@openzeppelin/contracts/interfaces/IERC20.sol": {
+			"keccak256": "0x1a6221315ce0307746c2c4827c125d821ee796c74a676787762f4778671d4f44",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1bb2332a7ee26dd0b0de9b7fe266749f54820c99ab6a3bcb6f7e6b751d47ee2d",
+				"dweb:/ipfs/QmcRWpaBeCYkhy68PR3B4AgD7asuQk7PwkWxrvJbZcikLF"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+			"keccak256": "0x74ed01eb66b923d0d0cfe3be84604ac04b76482a55f9dd655e1ef4d367f95bc2",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://5282825a626cfe924e504274b864a652b0023591fa66f06a067b25b51ba9b303",
+				"dweb:/ipfs/QmeCfPykghhMc81VJTrHTC7sF6CRvaA1FXVq2pJhwYp1dV"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
+			"keccak256": "0xd6fa4088198f04eef10c5bce8a2f4d60554b7ec4b987f684393c01bf79b94d9f",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://f95ee0bbd4dd3ac730d066ba3e785ded4565e890dbec2fa7d3b9fe3bad9d0d6e",
+				"dweb:/ipfs/QmSLr6bHkPFWT7ntj34jmwfyskpwo97T9jZUrk5sz3sdtR"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": {
+			"keccak256": "0x982c5cb790ab941d1e04f807120a71709d4c313ba0bfc16006447ffbd27fbbd5",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://8150ceb4ac947e8a442b2a9c017e01e880b2be2dd958f1fa9bc405f4c5a86508",
+				"dweb:/ipfs/QmbcBmFX66AY6Kbhnd5gx7zpkgqnUafo43XnmayAM7zVdB"
+			]
+		},
+		"@openzeppelin/contracts/utils/Context.sol": {
+			"keccak256": "0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6a708e8a5bdb1011c2c381c9a5cfd8a9a956d7d0a9dc1bd8bcdaf52f76ef2f12",
+				"dweb:/ipfs/Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF"
+			]
+		},
+		"@openzeppelin/contracts/utils/Pausable.sol": {
+			"keccak256": "0xdb484371dfbb848cb6f5d70464e9ac9b2900e4164ead76bbce4fef0b44bcc68f",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://f9d6f6f6600a2bec622f699081b58350873b5e63ce05464d17d674a290bb8a7c",
+				"dweb:/ipfs/QmQKVzSQY1PM3Bid4QhgVVZyx6B4Jx7XgaQzLKHj38vJz8"
+			]
+		},
+		"@openzeppelin/contracts/utils/ReentrancyGuard.sol": {
+			"keccak256": "0x11a5a79827df29e915a12740caf62fe21ebe27c08c9ae3e09abe9ee3ba3866d3",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://3cf0c69ab827e3251db9ee6a50647d62c90ba580a4d7bbff21f2bea39e7b2f4a",
+				"dweb:/ipfs/QmZiKwtKU1SBX4RGfQtY7PZfiapbbu6SZ9vizGQD9UHjRA"
+			]
+		},
+		"@openzeppelin/contracts/utils/introspection/ERC165.sol": {
+			"keccak256": "0x2d9dc2fe26180f74c11c13663647d38e259e45f95eb88f57b61d2160b0109d3e",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://81233d1f98060113d9922180bb0f14f8335856fe9f339134b09335e9f678c377",
+				"dweb:/ipfs/QmWh6R35SarhAn4z2wH8SU456jJSYL2FgucfTFgbHJJN4E"
+			]
+		},
+		"@openzeppelin/contracts/utils/introspection/IERC165.sol": {
+			"keccak256": "0x8891738ffe910f0cf2da09566928589bf5d63f4524dd734fd9cedbac3274dd5c",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://971f954442df5c2ef5b5ebf1eb245d7105d9fbacc7386ee5c796df1d45b21617",
+				"dweb:/ipfs/QmadRjHbkicwqwwh61raUEapaVEtaLMcYbQZWs9gUkgj3u"
+			]
+		},
+		"contracts/KipuBank.sol": {
+			"keccak256": "0xbdea1beac387689d5ba8670110bb288158053208acdaf226d853665d69c59f29",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://ebd366b52b89df48652fc848d566a5cfb05e5f2d6e0ce95991555fc8271bc6e2",
+				"dweb:/ipfs/QmdNLYfiSFBQkAhspt4H7DV4qBPvaxkatj8cH5t3Xz7mbm"
+			]
+		}
+	},
+	"version": 1
+}

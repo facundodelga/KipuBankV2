@@ -21,10 +21,20 @@
 						"internalType": "uint256",
 						"name": "bankCap",
 						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "ethUsdFeed",
+						"type": "address"
 					}
 				],
 				"stateMutability": "nonpayable",
 				"type": "constructor"
+			},
+			{
+				"inputs": [],
+				"name": "EnforcedPause",
+				"type": "error"
 			},
 			{
 				"inputs": [],
@@ -79,15 +89,10 @@
 				"type": "error"
 			},
 			{
-				"inputs": [],
-				"name": "ErrPaused",
-				"type": "error"
-			},
-			{
 				"inputs": [
 					{
 						"internalType": "uint256",
-						"name": "limit",
+						"name": "ethLimit",
 						"type": "uint256"
 					},
 					{
@@ -102,6 +107,11 @@
 			{
 				"inputs": [],
 				"name": "ErrZeroDeposit",
+				"type": "error"
+			},
+			{
+				"inputs": [],
+				"name": "ExpectedPause",
 				"type": "error"
 			},
 			{
@@ -200,7 +210,7 @@
 					{
 						"indexed": false,
 						"internalType": "uint256",
-						"name": "limit",
+						"name": "ethLimit",
 						"type": "uint256"
 					}
 				],
@@ -299,6 +309,32 @@
 				"anonymous": false,
 				"inputs": [
 					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "Paused",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "Unpaused",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
 						"indexed": true,
 						"internalType": "address",
 						"name": "user",
@@ -378,6 +414,24 @@
 				"type": "function"
 			},
 			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "maxSlippageBps",
+						"type": "uint256"
+					}
+				],
+				"name": "depositByUSD",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
 				"inputs": [],
 				"name": "depositCount",
 				"outputs": [
@@ -385,6 +439,19 @@
 						"internalType": "uint256",
 						"name": "",
 						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "ethUsd",
+				"outputs": [
+					{
+						"internalType": "contract AggregatorV3Interface",
+						"name": "",
+						"type": "address"
 					}
 				],
 				"stateMutability": "view",
@@ -495,12 +562,51 @@
 			},
 			{
 				"inputs": [],
+				"name": "pause",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "paused",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "pendingOwner",
 				"outputs": [
 					{
 						"internalType": "address",
 						"name": "",
 						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					}
+				],
+				"name": "quoteWeiForUsd",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "weiReq",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -540,7 +646,12 @@
 					},
 					{
 						"internalType": "uint256",
-						"name": "limit",
+						"name": "ethLimit",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "usdLimit",
 						"type": "uint256"
 					}
 				],
@@ -601,6 +712,49 @@
 			{
 				"inputs": [
 					{
+						"internalType": "string",
+						"name": "alias_",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					}
+				],
+				"name": "transferUSDToAlias",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "usd8",
+						"type": "uint256"
+					}
+				],
+				"name": "transferUSDToContact",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "unpause",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
 						"internalType": "address",
 						"name": "contact",
 						"type": "address"
@@ -648,10 +802,19 @@
 			}
 		],
 		"devdoc": {
-			"author": "-",
-			"custom:dev-run-script": "scripts/deploy_with_ethers.ts",
-			"details": "Implementa buenas prácticas: errores personalizados, checks-effects-interactions,      transferencias nativas seguras, modificadores y NatSpec.",
+			"author": "Facundo Delgado",
+			"details": "- Guarda saldos por dirección en storage interno (no ERC-20). - Límites inmutables: `BANK_CAP` (cap global de depósitos simultáneos) y `WITHDRAW_LIMIT` (retiro máximo por tx). - Soporta “monto en USD” usando Chainlink ETH/USD, pero almacena en wei. - Seguridad: patrón checks-effects-interactions, `Ownable2Step`, `Pausable`. - No hay iteración sobre mappings; para alias se indexa vía hash. - Las transferencias internas solo mueven saldos del mapping. El ETH real se mueve en `withdraw`.",
 			"errors": {
+				"EnforcedPause()": [
+					{
+						"details": "The operation failed because the contract is paused."
+					}
+				],
+				"ExpectedPause()": [
+					{
+						"details": "The operation failed because the contract is not paused."
+					}
+				],
 				"OwnableInvalidOwner(address)": [
 					{
 						"details": "The owner is not a valid owner account. (eg. `address(0)`)"
@@ -663,6 +826,14 @@
 					}
 				]
 			},
+			"events": {
+				"Paused(address)": {
+					"details": "Emitted when the pause is triggered by `account`."
+				},
+				"Unpaused(address)": {
+					"details": "Emitted when the pause is lifted by `account`."
+				}
+			},
 			"kind": "dev",
 			"methods": {
 				"acceptOwnership()": {
@@ -671,21 +842,101 @@
 				"constructor": {
 					"params": {
 						"bankCap": "tope global del banco",
+						"ethUsdFeed": "feed de precio de ETH/USD",
 						"initialOwner": "dueño inicial que deberá aceptar si se usa transferOwnership luego",
 						"withdrawLimit": "límite por retiro"
+					}
+				},
+				"deposit()": {
+					"custom:reverts": "ErrZeroDeposit si `msg.value == 0`.ErrBankCapExceeded si supera el tope global.",
+					"details": "Requiere `whenNotPaused`. Verifica `BANK_CAP`. Emite `Deposit`."
+				},
+				"depositByUSD(uint256,uint256)": {
+					"custom:error": "\"slippage\" si `msg.value` se desvía más que `maxSlippageBps` del `quote`.",
+					"custom:reverts": "ErrZeroDeposit si `usd8 == 0`.ErrBankCapExceeded si supera el tope global.",
+					"details": "Requiere `whenNotPaused`. Usa Chainlink ETH/USD. Verifica `slippage` y `BANK_CAP`.",
+					"params": {
+						"maxSlippageBps": "tolerancia en basis points (100 = 1%).",
+						"usd8": "monto objetivo en USD con 8 decimales (1 USD = 1e8)."
 					}
 				},
 				"owner()": {
 					"details": "Returns the address of the current owner."
 				},
+				"paused()": {
+					"details": "Returns true if the contract is paused, and false otherwise."
+				},
 				"pendingOwner()": {
 					"details": "Returns the address of the pending owner."
+				},
+				"removeContact(address)": {
+					"custom:reverts": "ErrContactNotFound si no existe.",
+					"details": "Limpia el índice de alias. Emite `ContactRemoved`.",
+					"params": {
+						"contact": "dirección del contacto a remover."
+					}
 				},
 				"renounceOwnership()": {
 					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
 				},
+				"setContact(address,string,uint256,uint256)": {
+					"custom:reverts": "ErrInvalidContact si `contact == address(0)`.ErrAliasTaken si el alias ya está tomado por otro contacto del mismo owner.",
+					"details": "Mantiene índice de alias por hash. Emite `ContactSet`.",
+					"params": {
+						"alias_": "alias legible.",
+						"contact": "dirección del contacto.",
+						"ethLimit": "límite por transferencia interna en wei (0 = sin tope).",
+						"usdLimit": "límite por transferencia “en USD” convertido a wei (0 = sin tope)."
+					}
+				},
 				"transferOwnership(address)": {
 					"details": "Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one. Can only be called by the current owner. Setting `newOwner` to the zero address is allowed; this can be used to cancel an initiated ownership transfer."
+				},
+				"transferToAlias(string,uint256)": {
+					"custom:reverts": "ErrContactNotFound si el alias no resuelve a un contacto válido.ErrWithdrawLimitExceeded si excede `ethLimit` del contacto.ErrInsufficientBalance si saldo insuficiente.",
+					"details": "Requiere `whenNotPaused`. Emite `InternalTransfer`.",
+					"params": {
+						"alias_": "alias del contacto.",
+						"amount": "monto en wei."
+					}
+				},
+				"transferToContact(address,uint256)": {
+					"custom:reverts": "ErrContactNotFound si el contacto no existe.ErrWithdrawLimitExceeded si excede `ethLimit` del contacto.ErrInsufficientBalance si saldo insuficiente.",
+					"details": "Requiere `whenNotPaused`. Emite `InternalTransfer`.",
+					"params": {
+						"amount": "monto en wei.",
+						"contact": "receptor interno."
+					}
+				},
+				"transferUSDToAlias(string,uint256)": {
+					"custom:reverts": "ErrContactNotFound si el alias no existe.ErrWithdrawLimitExceeded si excede `usdLimit` en wei calculado.ErrInsufficientBalance si saldo insuficiente.",
+					"details": "Convierte con precio actual, mueve wei. Requiere `whenNotPaused`.",
+					"params": {
+						"alias_": "alias del contacto.",
+						"usd8": "monto en USD con 8 decimales."
+					}
+				},
+				"transferUSDToContact(address,uint256)": {
+					"custom:reverts": "ErrContactNotFound si no existe el contacto.ErrWithdrawLimitExceeded si excede `usdLimit` en wei calculado.ErrInsufficientBalance si saldo insuficiente.",
+					"details": "Convierte con precio actual, mueve wei. Requiere `whenNotPaused`.",
+					"params": {
+						"to": "dirección del contacto.",
+						"usd8": "monto en USD con 8 decimales."
+					}
+				},
+				"updateContactLimit(address,uint256)": {
+					"custom:reverts": "ErrContactNotFound si no existe.",
+					"params": {
+						"contact": "dirección del contacto.",
+						"newLimit": "nuevo límite en wei (0 = sin tope)."
+					}
+				},
+				"withdraw(uint256)": {
+					"custom:reverts": "ErrZeroDeposit si `amount == 0`.ErrWithdrawLimitExceeded si `amount > WITHDRAW_LIMIT`.ErrInsufficientBalance si saldo insuficiente.ErrNativeTransferFailed si `call` falla.",
+					"details": "Requiere `whenNotPaused`. Aplica `WITHDRAW_LIMIT`. Emite `Withdrawal`.",
+					"params": {
+						"amount": "monto en wei."
+					}
 				}
 			},
 			"title": "KipuBank",
@@ -693,8 +944,42 @@
 		},
 		"userdoc": {
 			"kind": "user",
-			"methods": {},
-			"notice": "Simple vault-like bank donde usuarios depositan ETH en bóvedas personales.",
+			"methods": {
+				"deposit()": {
+					"notice": "Deposita ETH en la bóveda del remitente."
+				},
+				"depositByUSD(uint256,uint256)": {
+					"notice": "Deposita pensando en USD pero enviando ETH; guarda en wei."
+				},
+				"quoteWeiForUsd(uint256)": {
+					"notice": "USD con 8 dec (1 USD = 1e8). Devuelve wei necesarios (redondeo hacia arriba)."
+				},
+				"removeContact(address)": {
+					"notice": "Elimina un contacto del `msg.sender`."
+				},
+				"setContact(address,string,uint256,uint256)": {
+					"notice": "Crea o actualiza un contacto del `msg.sender`."
+				},
+				"transferToAlias(string,uint256)": {
+					"notice": "Transfiere internamente `amount` wei resolviendo el receptor por alias."
+				},
+				"transferToContact(address,uint256)": {
+					"notice": "Transfiere internamente `amount` wei a un contacto existente."
+				},
+				"transferUSDToAlias(string,uint256)": {
+					"notice": "Transfiere internamente un monto equivalente a `usd8` USD hacia un alias."
+				},
+				"transferUSDToContact(address,uint256)": {
+					"notice": "Transfiere internamente un monto equivalente a `usd8` USD hacia un contacto."
+				},
+				"updateContactLimit(address,uint256)": {
+					"notice": "Actualiza el límite `ethLimit` de un contacto."
+				},
+				"withdraw(uint256)": {
+					"notice": "Retira `amount` wei de la bóveda del remitente hacia su wallet."
+				}
+			},
+			"notice": "Bóveda custodial en ETH con contactos y transferencias internas.",
 			"version": 1
 		}
 	},
@@ -714,12 +999,12 @@
 		"remappings": []
 	},
 	"sources": {
-		"@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol": {
-			"keccak256": "0xfe4e8bb4861bb3860ba890ab91a3b818ec66e5a8f544fb608cfcb73f433472cd",
+		"@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol": {
+			"keccak256": "0x257a8d28fa83d3d942547c8e129ef465e4b5f3f31171e7be4739a4c98da6b4f0",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://644cff84052e1e82b5bb502b2a46e8f142a62b0db4cd9b38200798ba8373c6f7",
-				"dweb:/ipfs/QmTa99QHrJBn3SXDizquPBUiTxVCNKQrHgaWJhuds5Sce2"
+				"bzz-raw://6d39e11b1dc7b9b8ccdabbc9be442ab7cda4a81c748f57e316dcb1bcb4a28bf9",
+				"dweb:/ipfs/QmaG6vz6W6iEUBsbHSBob5mdcitYxWjoygxREHpsJHfWrS"
 			]
 		},
 		"@openzeppelin/contracts/access/Ownable.sol": {
@@ -746,12 +1031,20 @@
 				"dweb:/ipfs/Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF"
 			]
 		},
-		"contracts/KipuBank.sol": {
-			"keccak256": "0x24ba5ff928df5b9cb1354f884429c530a964f86e7c2152ac27123a39b165eaf9",
+		"@openzeppelin/contracts/utils/Pausable.sol": {
+			"keccak256": "0xdb484371dfbb848cb6f5d70464e9ac9b2900e4164ead76bbce4fef0b44bcc68f",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://a856998298e1ba30bc4bcd79091f9b90ac0f236beccbc2a6b0ce97079175c995",
-				"dweb:/ipfs/QmexXgWUJKwSQZxUEqsbrSJX2SG5QXL3w37hyjNqUo9e3J"
+				"bzz-raw://f9d6f6f6600a2bec622f699081b58350873b5e63ce05464d17d674a290bb8a7c",
+				"dweb:/ipfs/QmQKVzSQY1PM3Bid4QhgVVZyx6B4Jx7XgaQzLKHj38vJz8"
+			]
+		},
+		"contracts/KipuBank.sol": {
+			"keccak256": "0x4a30f711135dc301d27f8d35f86181b6e2594a17828c34bd17f6c262536fb6b6",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://d21599c55a2504a138cdd211faeeb9def579bc2e3f1935862fecbaafd48fe9dd",
+				"dweb:/ipfs/QmczgJqeGsVPanJnpQpCdAmh2b5pFspMdEgUMoSQZnTQVu"
 			]
 		}
 	},

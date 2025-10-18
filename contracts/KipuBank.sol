@@ -1,262 +1,616 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
- * @title KipuBank
- * @author -
- * @notice Simple vault-like bank donde usuarios depositan ETH en bóvedas personales.
- * @dev Implementa buenas prácticas: errores personalizados, checks-effects-interactions,
- *      transferencias nativas seguras, modificadores y NatSpec.
- * @custom:dev-run-script scripts/deploy_with_ethers.ts
+ * @title KipuBankV2
+ * @author Facundo Delgado
+ * @notice Bóveda custodial multi-token con contactos y transferencias internas.
+ * @dev
+ * - Contabilidad por token: `address(0)` representa ETH; ERC-20 vía `SafeERC20`.
+ * - Límites en USD (8 decimales) con Chainlink Price Feeds por token.
+ * - Normalización utilitaria a 6 dec (USDC-like) para UI.
+ * - Seguridad: CEI, `Ownable2Step`, `AccessControl`, `Pausable`, `ReentrancyGuard`.
+ * - Las transferencias internas no mueven tokens on-chain; solo saldos internos.
  */
-contract KipuBank is Ownable2Step {
-    /* ========== CONSTANTS & IMMUTABLES ========== */
-    uint256 public immutable WITHDRAW_LIMIT;
-    uint256 public immutable BANK_CAP;
-    string public constant VERSION = "KipuBank v2";
+contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
 
-    /* ========== STRUCTS ========== */
+    /*//////////////////////////////////////////////////////////////
+                               ROLES
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Rol para pausar/reanudar.
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    /// @notice Rol para gobernar riesgo (feeds, tokens, parámetros).
+    bytes32 public constant RISK_ROLE   = keccak256("RISK_ROLE");
+
+    /*//////////////////////////////////////////////////////////////
+                       CONSTANTES / INMUTABLES
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Tope global del banco en USD con 8 dec (1 USD = 1e8).
+    uint256 public immutable BANK_CAP_USD8;
+    /// @notice Límite por retiro en USD con 8 dec.
+    uint256 public immutable WITHDRAW_LIMIT_USD8;
+    /// @notice Versión del contrato.
+    string  public constant  VERSION = "KipuBank v2";
+
+    /*//////////////////////////////////////////////////////////////
+                         CONTACTOS Y ALIAS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Datos de un contacto del titular.
+     * @param alias_ Alias legible.
+     * @param ethLimit Límite por transferencia interna en wei (0 = sin tope).
+     * @param usdLimit Límite por transferencia “equivalente USD” convertido a wei (0 = sin tope).
+     * @param exists Bandera de existencia.
+     */
     struct Contact {
         string alias_;
-        uint256 limit;
+        uint256 ethLimit;
+        uint256 usdLimit;
         bool exists;
     }
 
-    /* ========== MAPPINGS ========== */
-    mapping(address => mapping(address => Contact)) private _contacts; // owner => contacto => datos
-    mapping(address => mapping(bytes32 => address)) private _aliasIndex; // owner => hash(alias) => contacto
-    mapping(address => address[]) private _contactList;
-    mapping(address => uint256) private _balances;
+    /// @dev owner => contacto => datos.
+    mapping(address => mapping(address => Contact)) private _contacts;
+    /// @dev owner => keccak256(alias) => contacto.
+    mapping(address => mapping(bytes32 => address)) private _aliasIndex;
 
-    /* ========== STATE ========== */
-    uint256 private _totalVaultBalance;
-    uint256 public depositCount;
-    uint256 public withdrawCount;
-    bool private isPaused;
+    /*//////////////////////////////////////////////////////////////
+                        CONTABILIDAD MULTI-TOKEN
+    //////////////////////////////////////////////////////////////*/
 
-    /* ========== EVENTS ========== */
-    event Deposit(address indexed user, uint256 amount, uint256 newBalance);
-    event Withdrawal(address indexed user, uint256 amount, uint256 newBalance);
-    event ContactSet(
-        address indexed owner,
-        address indexed contact,
-        string alias_,
-        uint256 limit
-    );
-    event ContactLimitUpdated(
-        address indexed owner,
-        address indexed contact,
-        uint256 newLimit
-    );
-    event ContactRemoved(
-        address indexed owner,
-        address indexed contact,
-        string alias_
-    );
-    event InternalTransfer(
-        address indexed from,
-        address indexed to,
-        uint256 amount
-    );
+    /// @dev Saldos crudos por token (wei o unidades del ERC-20).
+    mapping(address token => mapping(address user => uint256)) private _balRaw;
+    /// @dev Total crudo por token.
+    mapping(address token => uint256) private _totalRaw;
+    /// @notice Decimales del activo (`tokenDecimals[address(0)] = 18 para ETH`).
+    mapping(address token => uint8)    public  tokenDecimals;
+    /// @notice Feed Chainlink token/USD por activo.
+    mapping(address token => AggregatorV3Interface) public priceFeedUsd;
 
-    /* ========== ERRORS ========== */
-    error ErrZeroDeposit();
-    error ErrBankCapExceeded(uint256 attempted, uint256 available);
+    /// @notice Tracking aproximado del total del banco en USD8 (a precio de cada operación).
+    uint256 public totalBankUsd8;
+
+    /*//////////////////////////////////////////////////////////////
+                               EVENTOS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Depósito exitoso.
+     * @param token Dirección del activo (`address(0)`=ETH).
+     * @param user Remitente del depósito.
+     * @param amountRaw Monto crudo acreditado.
+     * @param newBalanceRaw Nuevo saldo crudo del usuario.
+     */
+    event Deposit(address indexed token, address indexed user, uint256 amountRaw, uint256 newBalanceRaw);
+
+    /**
+     * @notice Retiro exitoso.
+     * @param token Dirección del activo.
+     * @param user Retirante.
+     * @param amountRaw Monto crudo debitado.
+     * @param newBalanceRaw Nuevo saldo crudo del usuario.
+     */
+    event Withdrawal(address indexed token, address indexed user, uint256 amountRaw, uint256 newBalanceRaw);
+
+    /**
+     * @notice Transferencia interna entre bóvedas.
+     * @param token Dirección del activo.
+     * @param from Emisor interno.
+     * @param to Receptor interno.
+     * @param amountRaw Monto crudo transferido.
+     */
+    event InternalTransfer(address indexed token, address indexed from, address indexed to, uint256 amountRaw);
+
+    /**
+     * @notice Registro/alta de token soportado.
+     * @param token Dirección del token (no ETH).
+     * @param decimals Decimales del token.
+     * @param feed Dirección del feed Chainlink token/USD.
+     */
+    event TokenRegistered(address indexed token, uint8 decimals, address feed);
+
+    /**
+     * @notice Actualización de feed de precio.
+     * @param token Dirección del token.
+     * @param oldFeed Feed anterior.
+     * @param newFeed Nuevo feed.
+     */
+    event FeedUpdated(address indexed token, address oldFeed, address newFeed);
+
+    /**
+     * @notice Contacto creado/actualizado.
+     * @param owner Titular.
+     * @param contact Dirección del contacto.
+     * @param alias_ Alias legible.
+     * @param ethLimit Límite por transferencia interna en wei.
+     * @param usdLimit Límite “equivalente USD” en wei.
+     */
+    event ContactSet(address indexed owner, address indexed contact, string alias_, uint256 ethLimit, uint256 usdLimit);
+
+    /**
+     * @notice Contacto eliminado.
+     * @param owner Titular.
+     * @param contact Dirección del contacto.
+     * @param alias_ Alias previo.
+     */
+    event ContactRemoved(address indexed owner, address indexed contact, string alias_);
+
+    /**
+     * @notice Límite ETH del contacto actualizado.
+     * @param owner Titular.
+     * @param contact Dirección del contacto.
+     * @param newEthLimit Nuevo límite en wei.
+     */
+    event ContactLimitUpdated(address indexed owner, address indexed contact, uint256 newEthLimit);
+
+    /*//////////////////////////////////////////////////////////////
+                                ERRORES
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Monto cero no permitido.
+    error ErrZeroAmount();
+    /// @notice Se supera el tope global del banco.
+    /// @param attemptedUsd8 Total USD8 post-operación.
+    /// @param capUsd8 CAP configurado en USD8.
+    error ErrCapExceeded(uint256 attemptedUsd8, uint256 capUsd8);
+    /// @notice Excede el límite de retiro en USD.
+    /// @param requestedUsd8 Monto solicitado en USD8.
+    /// @param limitUsd8 Límite en USD8.
+    error ErrWithdrawLimitUSD(uint256 requestedUsd8, uint256 limitUsd8);
+    /// @notice Saldo insuficiente.
+    /// @param available Disponible.
+    /// @param requested Solicitado.
     error ErrInsufficientBalance(uint256 available, uint256 requested);
-    error ErrWithdrawLimitExceeded(uint256 limit, uint256 requested);
-    error ErrNativeTransferFailed();
-    error ErrPaused();
-    error ErrInvalidContact();
+    /// @notice Contacto inexistente.
     error ErrContactNotFound();
+    /// @notice Alias ya utilizado.
     error ErrAliasTaken();
+    /// @notice Contacto inválido (dirección cero).
+    error ErrInvalidContact();
+    /// @notice Slippage superado en depósito por USD.
+    /// @param quoteWei Wei cotizados.
+    /// @param sentWei Wei enviados.
+    /// @param maxBps Tolerancia en bps.
+    error SlippageExceeded(uint256 quoteWei, uint256 sentWei, uint256 maxBps);
+    /// @notice Precio inválido/no positivo desde el feed.
+    error BadPrice();
+    /// @notice Depósitos directos a `receive()` no permitidos.
+    error DirectEthNotAllowed();
 
-    /* ========== MODIFIERS ========== */
-    modifier positive(uint256 amount) {
-        if (amount == 0) revert ErrZeroDeposit();
-        _;
-    }
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
-    /* ========== CONSTRUCTOR ========== */
-    /// @param initialOwner dueño inicial que deberá aceptar si se usa transferOwnership luego
-    /// @param withdrawLimit límite por retiro
-    /// @param bankCap tope global del banco
+    /**
+     * @notice Inicializa roles, límites en USD y feed ETH/USD.
+     * @param owner_ Dueño inicial (admin de roles).
+     * @param bankCapUsd8 CAP global en USD8.
+     * @param withdrawLimitUsd8 Límite por retiro en USD8.
+     * @param ethUsdFeed Dirección del feed ETH/USD.
+     */
     constructor(
-        address initialOwner,
-        uint256 withdrawLimit,
-        uint256 bankCap
-    ) Ownable(initialOwner) {
-        require(initialOwner != address(0), "owner is zero");
-        require(withdrawLimit > 0, "withdrawLimit must be > 0");
-        require(bankCap > 0, "bankCap must be > 0");
+        address owner_,
+        uint256 bankCapUsd8,
+        uint256 withdrawLimitUsd8,
+        address ethUsdFeed
+    )  Ownable(owner_) {
 
-        _transferOwnership(initialOwner); // Ownable2Step
+        _grantRole(DEFAULT_ADMIN_ROLE, owner_);
+        _grantRole(PAUSER_ROLE, owner_);
+        _grantRole(RISK_ROLE, owner_);
 
-        WITHDRAW_LIMIT = withdrawLimit;
-        BANK_CAP = bankCap;
-        isPaused = false;
+        BANK_CAP_USD8       = bankCapUsd8;
+        WITHDRAW_LIMIT_USD8 = withdrawLimitUsd8;
+
+        // Registrar ETH
+        tokenDecimals[address(0)] = 18;
+        priceFeedUsd[address(0)]  = AggregatorV3Interface(ethUsdFeed);
+        emit TokenRegistered(address(0), 18, ethUsdFeed);
     }
 
-    /* ========== EXTERNAL & PUBLIC FUNCTIONS ========== */
-    function deposit() external payable positive(msg.value) {
-        uint256 amount = msg.value;
-        uint256 available = BANK_CAP - _totalVaultBalance;
-        if (isPaused) revert ErrPaused();
-        if (amount > available) revert ErrBankCapExceeded(amount, available);
+    /*//////////////////////////////////////////////////////////////
+                                ADMIN
+    //////////////////////////////////////////////////////////////*/
 
-        _balances[msg.sender] += amount;
-        _totalVaultBalance += amount;
-        _incrementDepositCount();
+    /**
+     * @notice Pausa operaciones sensibles.
+     * @dev Requiere `PAUSER_ROLE`.
+     */
+    function pause() external onlyRole(PAUSER_ROLE) { _pause(); }
 
-        emit Deposit(msg.sender, amount, _balances[msg.sender]);
+    /**
+     * @notice Reanuda operaciones.
+     * @dev Requiere `PAUSER_ROLE`.
+     */
+    function unpause() external onlyRole(PAUSER_ROLE) { _unpause(); }
+
+    /**
+     * @notice Registra o actualiza un token ERC-20 y su feed USD.
+     * @dev ETH ya está pre-registrado (`address(0)`).
+     * @param token Dirección del token (no ETH).
+     * @param feed Dirección del Aggregator token/USD.
+     */
+    function registerToken(address token, address feed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(0), "ETH pre-registered");
+        uint8 d = IERC20Metadata(token).decimals();
+        tokenDecimals[token] = d;
+        AggregatorV3Interface old = priceFeedUsd[token];
+        priceFeedUsd[token] = AggregatorV3Interface(feed);
+        if (address(old) == address(0)) emit TokenRegistered(token, d, feed);
+        else emit FeedUpdated(token, address(old), feed);
     }
 
-    function withdraw(uint256 amount) external positive(amount) {
-        if (amount > WITHDRAW_LIMIT)
-            revert ErrWithdrawLimitExceeded(WITHDRAW_LIMIT, amount);
+    /*//////////////////////////////////////////////////////////////
+                         PRECIOS Y CONVERSIONES
+    //////////////////////////////////////////////////////////////*/
 
-        uint256 userBalance = _balances[msg.sender];
-        if (userBalance < amount)
-            revert ErrInsufficientBalance(userBalance, amount);
-
-        _balances[msg.sender] = userBalance - amount;
-        _totalVaultBalance -= amount;
-        _incrementWithdrawCount();
-
-        _safeTransfer(payable(msg.sender), amount);
-
-        emit Withdrawal(msg.sender, amount, _balances[msg.sender]);
+    /**
+     * @notice Obtiene precio token/USD normalizado a 8 decimales.
+     * @param token Dirección del token (`address(0)`=ETH).
+     * @return p8 Precio USD8.
+     */
+    function priceUsd8(address token) public view returns (uint256 p8) {
+        AggregatorV3Interface aggr = priceFeedUsd[token];
+        (, int256 a,,,) = aggr.latestRoundData();
+        if (a <= 0) revert BadPrice();
+        uint8 fd = aggr.decimals();
+        uint256 u = uint256(a);
+        return fd == 8 ? u : (fd > 8 ? u / 10**(fd-8) : u * 10**(8-fd));
     }
 
-    // setear/actualizar contacto con límite
-    function setContact(
-        address contact,
-        string calldata alias_,
-        uint256 limit
-    ) external {
+    /**
+     * @notice Convierte monto crudo de `token` a USD8 usando Chainlink.
+     * @param token Dirección del token.
+     * @param amountRaw Monto crudo (wei o unidades ERC-20).
+     * @return usd8 Monto equivalente en USD8.
+     */
+    function toUsd8(address token, uint256 amountRaw) public view returns (uint256 usd8) {
+        uint8 d = tokenDecimals[token];
+        uint256 p8 = priceUsd8(token);              // USD8 por 1 * 10^d
+        // usd8 = amountRaw * p8 / 10^d
+        return (amountRaw * p8) / (10**d);
+    }
+
+    /**
+     * @notice Normaliza a 6 dec para UI (USDC-like).
+     * @param token Dirección del token.
+     * @param amountRaw Monto crudo.
+     * @return amount6 Monto en 6 dec.
+     */
+    function toUnit6(address token, uint256 amountRaw) external view returns (uint256 amount6) {
+        uint8 d = tokenDecimals[token];
+        if (d == 6) return amountRaw;
+        return d > 6 ? amountRaw / 10**(d-6) : amountRaw * 10**(6-d);
+    }
+
+    /**
+     * @notice Cotiza wei necesarios para `usd8` USD usando feed ETH/USD.
+     * @param usd8 Monto en USD8.
+     * @return weiReq Wei requeridos (redondeo hacia arriba).
+     */
+    function quoteWeiForUsd(uint256 usd8) external view returns (uint256 weiReq) {
+        uint256 p8 = priceUsd8(address(0));
+        // wei = ceil(usd8 * 1e18 / p8)
+        unchecked { return (usd8 * 1e18 + p8 - 1) / p8; }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                               DEPÓSITOS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Deposita ETH pensando en USD; guarda wei internos.
+     * @dev Requiere `whenNotPaused`. Verifica slippage y `BANK_CAP_USD8`.
+     * @param usd8 Objetivo en USD8.
+     * @param maxSlippageBps Tolerancia en bps (100 = 1%).
+     */
+    function depositEthByUsd(uint256 usd8, uint256 maxSlippageBps)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+    {
+        if (usd8 == 0) revert ErrZeroAmount();
+        uint256 quoteWei = _quoteWeiForUsdInternal(usd8);
+        if (!_withinSlippage(quoteWei, msg.value, maxSlippageBps)) {
+            revert SlippageExceeded(quoteWei, msg.value, maxSlippageBps);
+        }
+        _enforceBankCapOnChange(address(0), msg.value, true);
+        _balRaw[address(0)][msg.sender] += msg.value;
+        _totalRaw[address(0)] += msg.value;
+        emit Deposit(address(0), msg.sender, msg.value, _balRaw[address(0)][msg.sender]);
+    }
+
+    /**
+     * @notice Depósito genérico (ETH o ERC-20).
+     * @dev Para ETH `token=address(0)` y `msg.value == amountRaw`.
+     * @param token Dirección del token.
+     * @param amountRaw Monto crudo a acreditar.
+     */
+    function deposit(address token, uint256 amountRaw)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+    {
+        if (amountRaw == 0) revert ErrZeroAmount();
+
+        if (token == address(0)) {
+            require(msg.value == amountRaw, "bad msg.value");
+        } else {
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amountRaw);
+        }
+
+        _enforceBankCapOnChange(token, amountRaw, true);
+        _balRaw[token][msg.sender] += amountRaw;
+        _totalRaw[token] += amountRaw;
+
+        emit Deposit(token, msg.sender, amountRaw, _balRaw[token][msg.sender]);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                RETIROS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Retiro genérico (ETH o ERC-20).
+     * @dev Valida `WITHDRAW_LIMIT_USD8` contra Chainlink.
+     * @param token Dirección del token.
+     * @param amountRaw Monto crudo a debitar.
+     */
+    function withdraw(address token, uint256 amountRaw)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        if (amountRaw == 0) revert ErrZeroAmount();
+
+        uint256 usd8 = toUsd8(token, amountRaw);
+        if (usd8 > WITHDRAW_LIMIT_USD8) revert ErrWithdrawLimitUSD(usd8, WITHDRAW_LIMIT_USD8);
+
+        uint256 bal = _balRaw[token][msg.sender];
+        if (bal < amountRaw) revert ErrInsufficientBalance(bal, amountRaw);
+
+        _balRaw[token][msg.sender] = bal - amountRaw;
+        _totalRaw[token] -= amountRaw;
+        _enforceBankCapOnChange(token, amountRaw, false);
+
+        if (token == address(0)) {
+            (bool ok,) = msg.sender.call{value: amountRaw}("");
+            require(ok, "eth xfer");
+        } else {
+            IERC20(token).safeTransfer(msg.sender, amountRaw);
+        }
+
+        emit Withdrawal(token, msg.sender, amountRaw, _balRaw[token][msg.sender]);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                         TRANSFERENCIAS INTERNAS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Transfiere internamente `amountRaw` a `to` para `token`.
+     * @dev No mueve el activo on-chain; solo contabilidad.
+     * @param token Dirección del token.
+     * @param to Receptor interno.
+     * @param amountRaw Monto crudo.
+     */
+    function transferInternal(address token, address to, uint256 amountRaw)
+        external
+        whenNotPaused
+    {
+        if (amountRaw == 0) revert ErrZeroAmount();
+
+        // Si es ETH, validar límites por contacto si existiera
+        if (token == address(0)) {
+            Contact storage c = _contacts[msg.sender][to];
+            if (!c.exists) revert ErrContactNotFound();
+            if (c.ethLimit != 0 && amountRaw > c.ethLimit) {
+                revert ErrWithdrawLimitUSD(amountRaw, c.ethLimit);
+            }
+        }
+
+        uint256 sb = _balRaw[token][msg.sender];
+        if (sb < amountRaw) revert ErrInsufficientBalance(sb, amountRaw);
+
+        _balRaw[token][msg.sender] = sb - amountRaw;
+        _balRaw[token][to] += amountRaw;
+
+        emit InternalTransfer(token, msg.sender, to, amountRaw);
+    }
+
+    /**
+     * @notice Transfiere internamente por alias del emisor.
+     * @dev Resuelve alias a contacto y aplica límites si es ETH.
+     * @param token Dirección del token.
+     * @param alias_ Alias del contacto.
+     * @param amountRaw Monto crudo.
+     */
+    function transferInternalByAlias(address token, string calldata alias_, uint256 amountRaw)
+        external
+        whenNotPaused
+    {
+        if (amountRaw == 0) revert ErrZeroAmount();
+        address to = _aliasIndex[msg.sender][keccak256(bytes(alias_))];
+        Contact storage c = _contacts[msg.sender][to];
+        if (!c.exists) revert ErrContactNotFound();
+
+        if (token == address(0) && c.ethLimit != 0 && amountRaw > c.ethLimit) {
+            revert ErrWithdrawLimitUSD(amountRaw, c.ethLimit);
+        }
+
+        uint256 sb = _balRaw[token][msg.sender];
+        if (sb < amountRaw) revert ErrInsufficientBalance(sb, amountRaw);
+
+        _balRaw[token][msg.sender] = sb - amountRaw;
+        _balRaw[token][to] += amountRaw;
+
+        emit InternalTransfer(token, msg.sender, to, amountRaw);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                               CONTACTOS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Crea o actualiza un contacto del emisor.
+     * @param contact Dirección del contacto.
+     * @param alias_ Alias legible.
+     * @param ethLimit Límite por transferencia en wei (0 = sin tope).
+     * @param usdLimit Límite “equivalente USD” en wei (0 = sin tope).
+     */
+    function setContact(address contact, string calldata alias_, uint256 ethLimit, uint256 usdLimit) external {
         if (contact == address(0)) revert ErrInvalidContact();
-        bytes32 k = _aliasKey(alias_);
+        bytes32 k = keccak256(bytes(alias_));
         address current = _aliasIndex[msg.sender][k];
         if (current != address(0) && current != contact) revert ErrAliasTaken();
 
         Contact storage prev = _contacts[msg.sender][contact];
         if (prev.exists) {
-            bytes32 oldK = _aliasKey(prev.alias_);
-            if (oldK != k && _aliasIndex[msg.sender][oldK] == contact)
+            bytes32 oldK = keccak256(bytes(prev.alias_));
+            if (oldK != k && _aliasIndex[msg.sender][oldK] == contact) {
                 delete _aliasIndex[msg.sender][oldK];
+            }
         }
 
         _contacts[msg.sender][contact] = Contact({
             alias_: alias_,
-            limit: limit,
+            ethLimit: ethLimit,
+            usdLimit: usdLimit,
             exists: true
         });
         _aliasIndex[msg.sender][k] = contact;
-        emit ContactSet(msg.sender, contact, alias_, limit);
+
+        emit ContactSet(msg.sender, contact, alias_, ethLimit, usdLimit);
     }
 
-    function updateContactLimit(address contact, uint256 newLimit) external {
-        Contact storage c = _contacts[msg.sender][contact];
-        if (!c.exists) revert ErrContactNotFound();
-        c.limit = newLimit;
-        emit ContactLimitUpdated(msg.sender, contact, newLimit);
-    }
-
-    // transferencia interna por contacto
-    function transferToContact(
-        address contact,
-        uint256 amount
-    ) external positive(amount) {
-        Contact storage c = _contacts[msg.sender][contact];
-        if (!c.exists) revert ErrContactNotFound();
-        if (c.limit != 0 && amount > c.limit)
-            revert ErrWithdrawLimitExceeded(c.limit, amount); // reutilizo error
-        uint256 sb = _balances[msg.sender];
-        if (sb < amount) revert ErrInsufficientBalance(sb, amount);
-
-        _balances[msg.sender] = sb - amount;
-        _balances[contact] += amount;
-        emit InternalTransfer(msg.sender, contact, amount);
-    }
-
-    // transferencia interna por alias
-    function transferToAlias(
-        string calldata alias_,
-        uint256 amount
-    ) external positive(amount) {
-        address contact = _aliasIndex[msg.sender][_aliasKey(alias_)];
-        Contact storage c = _contacts[msg.sender][contact];
-        if (!c.exists) revert ErrContactNotFound();
-        if (c.limit != 0 && amount > c.limit)
-            revert ErrWithdrawLimitExceeded(c.limit, amount);
-        uint256 sb = _balances[msg.sender];
-        if (sb < amount) revert ErrInsufficientBalance(sb, amount);
-
-        _balances[msg.sender] = sb - amount;
-        _balances[contact] += amount;
-        emit InternalTransfer(msg.sender, contact, amount);
-    }
-
+    /**
+     * @notice Elimina un contacto del emisor.
+     * @param contact Dirección del contacto a remover.
+     */
     function removeContact(address contact) external {
         Contact storage c = _contacts[msg.sender][contact];
         if (!c.exists) revert ErrContactNotFound();
-        bytes32 k = _aliasKey(c.alias_);
-        if (_aliasIndex[msg.sender][k] == contact)
-            delete _aliasIndex[msg.sender][k];
+        bytes32 k = keccak256(bytes(c.alias_));
+        if (_aliasIndex[msg.sender][k] == contact) delete _aliasIndex[msg.sender][k];
         string memory aliasLocal = c.alias_;
         delete _contacts[msg.sender][contact];
         emit ContactRemoved(msg.sender, contact, aliasLocal);
     }
 
-    function getContact(
-        address owner,
-        address contact
-    ) external view returns (string memory alias_, bool exists) {
+    /**
+     * @notice Actualiza el límite ETH del contacto.
+     * @param contact Dirección del contacto.
+     * @param newLimit Nuevo límite en wei (0 = sin tope).
+     */
+    function updateContactEthLimit(address contact, uint256 newLimit) external {
+        Contact storage c = _contacts[msg.sender][contact];
+        if (!c.exists) revert ErrContactNotFound();
+        c.ethLimit = newLimit;
+        emit ContactLimitUpdated(msg.sender, contact, newLimit);
+    }
+
+    /**
+     * @notice Devuelve datos básicos del contacto.
+     * @param owner Titular.
+     * @param contact Dirección del contacto.
+     * @return alias_ Alias actual.
+     * @return exists Bandera de existencia.
+     */
+    function getContact(address owner, address contact) external view returns (string memory alias_, bool exists) {
         Contact storage c = _contacts[owner][contact];
         return (c.alias_, c.exists);
     }
 
-    function getContactByAlias(
-        address owner,
-        string calldata alias_
-    ) external view returns (address contact, bool exists) {
-        address who = _aliasIndex[owner][_aliasKey(alias_)];
+    /**
+     * @notice Resuelve un alias a dirección de contacto.
+     * @param owner Titular.
+     * @param alias_ Alias a resolver.
+     * @return contact Dirección resultante.
+     * @return exists Bandera de existencia.
+     */
+    function getContactByAlias(address owner, string calldata alias_) external view returns (address contact, bool exists) {
+        address who = _aliasIndex[owner][keccak256(bytes(alias_))];
         Contact storage c = _contacts[owner][who];
         return (who, c.exists);
     }
 
-    function getVaultBalance(address user) external view returns (uint256) {
-        return _balances[user];
+    /*//////////////////////////////////////////////////////////////
+                               GETTERS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Saldo crudo de `user` para `token`.
+     * @param token Dirección del token.
+     * @param user Cuenta.
+     * @return balanceRaw Saldo crudo.
+     */
+    function balanceOf(address token, address user) external view returns (uint256 balanceRaw) {
+        return _balRaw[token][user];
     }
 
-    function getBankTotalBalance() external view returns (uint256) {
-        return _totalVaultBalance;
+    /**
+     * @notice Total crudo retenido por token.
+     * @param token Dirección del token.
+     * @return totalRaw Suma de saldos crudos.
+     */
+    function totalOf(address token) external view returns (uint256 totalRaw) {
+        return _totalRaw[token];
     }
 
-    /* ========== PRIVATE ========== */
-    function _incrementDepositCount() private {
-        depositCount += 1;
-    }
-    function _incrementWithdrawCount() private {
-        withdrawCount += 1;
+    /*//////////////////////////////////////////////////////////////
+                               INTERNAS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Cotiza wei necesarios para USD8 (uso interno).
+    function _quoteWeiForUsdInternal(uint256 usd8) internal view returns (uint256 weiReq) {
+        uint256 p8 = priceUsd8(address(0));
+        unchecked { return (usd8 * 1e18 + p8 - 1) / p8; }
     }
 
-    function _safeTransfer(address payable to, uint256 amount) private {
-        (bool success, ) = to.call{value: amount}("");
-        if (!success) revert ErrNativeTransferFailed();
+    /// @dev Chequea slippage relativo en bps.
+    function _withinSlippage(uint256 quote, uint256 sent, uint256 bps) private pure returns (bool) {
+        uint256 diff = sent > quote ? sent - quote : quote - sent;
+        return diff * 10_000 <= quote * bps;
     }
 
-    function _aliasKey(string memory a) private pure returns (bytes32) {
-        return keccak256(bytes(a));
+    /// @dev Aplica CAP del banco en USD8 al agregar o quitar fondos.
+    function _enforceBankCapOnChange(address token, uint256 deltaRaw, bool add) internal {
+        uint256 usd8 = toUsd8(token, deltaRaw);
+        if (add) {
+            uint256 afterUsd = totalBankUsd8 + usd8;
+            if (afterUsd > BANK_CAP_USD8) revert ErrCapExceeded(afterUsd, BANK_CAP_USD8);
+            totalBankUsd8 = afterUsd;
+        } else {
+            totalBankUsd8 = totalBankUsd8 > usd8 ? totalBankUsd8 - usd8 : 0;
+        }
     }
 
-    /* ========== RECEIVE / FALLBACK ========== */
-    receive() external payable {
-        revert ErrZeroDeposit();
-    }
-    fallback() external payable {
-        revert ErrZeroDeposit();
-    }
+    /*//////////////////////////////////////////////////////////////
+                           RECEIVE / FALLBACK
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Se rechazan envíos directos. Usar `depositEthByUsd` o `deposit(address(0),amount)`.
+     */
+    receive() external payable { revert DirectEthNotAllowed(); }
+
+    /**
+     * @notice Fallback rechazada.
+     */
+    fallback() external payable { revert DirectEthNotAllowed(); }
 }
