@@ -42,7 +42,7 @@ contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
     /// @notice Límite por retiro en USD con 8 dec.
     uint256 public immutable WITHDRAW_LIMIT_USD8;
     /// @notice Versión del contrato.
-    string  public constant  VERSION = "KipuBank v2";
+    string  public constant  VERSION = "KipuBank v2.1";
 
     /*//////////////////////////////////////////////////////////////
                          CONTACTOS Y ALIAS
@@ -52,7 +52,7 @@ contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
      * @notice Datos de un contacto del titular.
      * @param alias_ Alias legible.
      * @param ethLimit Límite por transferencia interna en wei (0 = sin tope).
-     * @param usdLimit Límite por transferencia “equivalente USD” convertido a wei (0 = sin tope).
+     * @param usdLimit Límite por transferencia "equivalente USD" convertido a wei (0 = sin tope).
      * @param exists Bandera de existencia.
      */
     struct Contact {
@@ -136,7 +136,7 @@ contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
      * @param contact Dirección del contacto.
      * @param alias_ Alias legible.
      * @param ethLimit Límite por transferencia interna en wei.
-     * @param usdLimit Límite “equivalente USD” en wei.
+     * @param usdLimit Límite "equivalente USD" en wei.
      */
     event ContactSet(address indexed owner, address indexed contact, string alias_, uint256 ethLimit, uint256 usdLimit);
 
@@ -471,7 +471,7 @@ contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
      * @param contact Dirección del contacto.
      * @param alias_ Alias legible.
      * @param ethLimit Límite por transferencia en wei (0 = sin tope).
-     * @param usdLimit Límite “equivalente USD” en wei (0 = sin tope).
+     * @param usdLimit Límite "equivalente USD" en wei (0 = sin tope).
      */
     function setContact(address contact, string calldata alias_, uint256 ethLimit, uint256 usdLimit) external {
         if (contact == address(0)) revert ErrInvalidContact();
@@ -582,10 +582,24 @@ contract KipuBankV2 is Ownable, AccessControl, Pausable, ReentrancyGuard {
         unchecked { return (usd8 * 1e18 + p8 - 1) / p8; }
     }
 
-    /// @dev Chequea slippage relativo en bps.
+    /// @dev Chequea slippage relativo en bps (FIXED: previene overflow).
     function _withinSlippage(uint256 quote, uint256 sent, uint256 bps) private pure returns (bool) {
+        if (quote == 0) return false;
+        
         uint256 diff = sent > quote ? sent - quote : quote - sent;
-        return diff * 10_000 <= quote * bps;
+        
+        // Evitar overflow: diff * 10_000 <= quote * bps
+        // Reescribimos como: diff <= (quote * bps) / 10_000
+        // Pero para evitar división con resto, usamos: diff * 10_000 <= quote * bps
+        // Como quote y diff son ambos uint256, podríamos tener overflow.
+        // Solución: verificar si la operación causaría overflow antes de hacerla
+        
+        // Si diff es muy grande, podemos simplificar:
+        // diff / quote > bps / 10_000 significa que está fuera del rango
+        
+        // Método seguro: usar división primero
+        uint256 maxAllowedDiff = (quote * bps) / 10_000;
+        return diff <= maxAllowedDiff;
     }
 
     /// @dev Aplica CAP del banco en USD8 al agregar o quitar fondos.

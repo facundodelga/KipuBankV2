@@ -1326,7 +1326,7 @@
 						"contact": "Dirección del contacto.",
 						"ethLimit": "Límite por transferencia interna en wei.",
 						"owner": "Titular.",
-						"usdLimit": "Límite “equivalente USD” en wei."
+						"usdLimit": "Límite \"equivalente USD\" en wei."
 					}
 				},
 				"Deposit(address,address,uint256,uint256)": {
@@ -1496,7 +1496,7 @@
 						"alias_": "Alias legible.",
 						"contact": "Dirección del contacto.",
 						"ethLimit": "Límite por transferencia en wei (0 = sin tope).",
-						"usdLimit": "Límite “equivalente USD” en wei (0 = sin tope)."
+						"usdLimit": "Límite \"equivalente USD\" en wei (0 = sin tope)."
 					}
 				},
 				"supportsInterface(bytes4)": {
@@ -1888,11 +1888,11 @@
 			]
 		},
 		"contracts/KipuBank.sol": {
-			"keccak256": "0xbdea1beac387689d5ba8670110bb288158053208acdaf226d853665d69c59f29",
+			"keccak256": "0x2e2c7009147f3e49d778a634bf2dc3dc2d6bc660ce7bd9c6cfd3247a9725aa7f",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://ebd366b52b89df48652fc848d566a5cfb05e5f2d6e0ce95991555fc8271bc6e2",
-				"dweb:/ipfs/QmdNLYfiSFBQkAhspt4H7DV4qBPvaxkatj8cH5t3Xz7mbm"
+				"bzz-raw://bccdff906383d570c38518104481b37b4bfbce5b96a04e72f00319021ce339b1",
+				"dweb:/ipfs/QmYCwQVgiKNvNLKTALKRx2PDrZYX2BGd2moFu6KnecU4i9"
 			]
 		}
 	},
