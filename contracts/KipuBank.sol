@@ -223,7 +223,6 @@ contract KipuBankV2 is AccessControl, ReentrancyGuard, Pausable {
 
         function unpause() external onlyRole(ADMIN_ROLE) { _unpause(); }
 
-    // --------- NUEVO: gestión del límite ----------
     /**
      * @notice Actualiza el límite diario por usuario en USD (6 decimales). 0 desactiva el límite.
      */
@@ -231,7 +230,6 @@ contract KipuBankV2 is AccessControl, ReentrancyGuard, Pausable {
         perUserDailyWithdrawLimitUSD = newLimitUSD;
         emit PerUserDailyWithdrawLimitUpdated(newLimitUSD);
     }
-    // ----------------------------------------------
 
     // =============================================================
     //                   FUNCIONES DE CONSULTA
