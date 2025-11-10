@@ -80,7 +80,6 @@ cp .env.example .env
 ```
 
 Edita `.env` con tus valores:
-- `PRIVATE_KEY`: Clave privada para deployment (NUNCA en producción)
 - `SEPOLIA_RPC_URL`: URL del RPC de Sepolia
 - `ETHERSCAN_API_KEY`: API key de Etherscan para verificación
 
@@ -90,15 +89,24 @@ Edita `.env` con tus valores:
 
 ```bash
 # Configurar variables de entorno
-export PRIVATE_KEY=tu_clave_privada
 export SEPOLIA_RPC_URL=https://rpc.sepolia.org
 export ETHERSCAN_API_KEY=tu_api_key
 
 # Desplegar contrato
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
+forge verify-contract \
+  --rpc-url sepolia \
+  --chain-id 11155111 \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
+  <DIRECCION_DEL_CONTRATO> contracts/KipuBank.sol:KipuBankV3
 
 # Configurar tokens permitidos
-forge script script/Setup.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+forge script script/Setup.s.sol:SetupKipuBankV3 \
+  --rpc-url sepolia \
+  --account deployer \
+  --sender <TU_DIRECCION> \
+  --chain-id 11155111 \
+  --broadcast \
+  -vvvv
 ```
 
 ### Parámetros de Deployment
@@ -208,19 +216,6 @@ forge test --match-test test_DepositUSDC
 
 # Con verbosidad
 forge test -vvv
-```
-
-### Tests con Fork de Testnet
-
-```bash
-# Configurar variable de entorno
-export SEPOLIA_RPC_URL=https://rpc.sepolia.org
-
-# Ejecutar tests con fork
-forge test --fork-url $SEPOLIA_RPC_URL -vvv
-
-# Test específico de fork
-forge test --fork-url $SEPOLIA_RPC_URL --match-test test_DepositETH_ToUSDC -vvv
 ```
 
 ### Tests Principales
