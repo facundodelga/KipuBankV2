@@ -1,25 +1,51 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.30;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
+import {AccessControl} from "openzeppelin-contracts/access/AccessControl.sol";
+import {Pausable} from "openzeppelin-contracts/utils/Pausable.sol";
+import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Interfaz de Uniswap V2 Router (local hasta que se instale la dependencia)
 interface IUniswapV2Router02 {
     function swapExactTokensForTokens(
-        uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline
+        uint amountIn, 
+        uint amountOutMin, 
+        address[] calldata path, 
+        address to, 
+        uint deadline
     ) external returns (uint[] memory amounts);
 
     function swapExactETHForTokens(
-        uint amountOutMin, address[] calldata path, address to, uint deadline
+        uint amountOutMin, 
+        address[] calldata path, 
+        address to, 
+        uint deadline
     ) external payable returns (uint[] memory amounts);
 
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+    function getAmountsOut(uint amountIn, address[] calldata path) 
+        external 
+        view 
+        returns (uint[] memory amounts);
 
     function WETH() external pure returns (address);
+}
+
+// Interfaz de Chainlink Price Feed (local hasta que se instale la dependencia)
+interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
+    function description() external view returns (string memory);
+    function version() external view returns (uint256);
+    function getRoundData(uint80 _roundId)
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 /**
@@ -97,7 +123,9 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard, Pausable {
         bankCapUSD = _bankCapUSD;
         USDC = _usdcAddress;
         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
-        WETH = IUniswapV2Router02(_uniswapRouter).WETH();
+        address _weth = IUniswapV2Router02(_uniswapRouter).WETH();
+        require(_weth != address(0), "Invalid WETH");
+        WETH = _weth;
         usdcPriceFeed = AggregatorV3Interface(_usdcPriceFeed);
         perUserDailyWithdrawLimitUSD = _perUserDailyWithdrawLimitUSD;
 
@@ -218,7 +246,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard, Pausable {
     //                      RETIROS
     // =========================================================
 
-    function withdrawUSDC(uint256 amountUSDC) external nonReentrant whenNotPaused {
+    function withdrawUSDC(uint256 amountUSDC) public nonReentrant whenNotPaused {
         if (amountUSDC == 0) revert InvalidAmount();
         uint256 bal = usdcBalances[msg.sender];
         if (bal < amountUSDC) revert InsufficientBalance();
@@ -234,7 +262,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard, Pausable {
     }
 
     /// Wrapper con slippage por defecto y deadline 5 min.
-    function withdrawAsToken(address tokenOut, uint256 usdcAmount) external nonReentrant whenNotPaused {
+    function withdrawAsToken(address tokenOut, uint256 usdcAmount) public nonReentrant whenNotPaused {
         if (tokenOut == address(0) || usdcAmount == 0) revert InvalidAmount();
         if (tokenOut == USDC) { withdrawUSDC(usdcAmount); return; }
         if (!allowedForSwap[tokenOut]) revert TokenNotAllowed();
@@ -244,8 +272,8 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard, Pausable {
         _withdrawAsToken(tokenOut, usdcAmount, minOut, block.timestamp + 300);
     }
 
-    function withdrawAsToken(address tokenOut, uint256 usdcAmount, uint256 minOut, uint256 deadline)
-        external
+    function withdrawAsToken(address tokenOut, uint256 usdcAmount, uint256 minOut, uint256 deadline) 
+        public
         nonReentrant
         whenNotPaused
     {
@@ -336,7 +364,7 @@ contract KipuBankV3 is AccessControl, ReentrancyGuard, Pausable {
     }
 
     function _path2(address a, address b) internal pure returns (address[] memory p) {
-        p = new address;
+        p = new address[](2);
         p[0] = a; p[1] = b;
     }
 

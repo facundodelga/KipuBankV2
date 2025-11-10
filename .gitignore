@@ -1,15 +1,38 @@
-# Remix compiler artifacts
-**/artifacts/
-**/artifacts/**
+# Foundry
+out/
+cache/
+broadcast/
+artifacts/
+lib/
 
-# Remix plugin state folders
-deps/
-states/
-
-# Debug info
-*.dbg.json
-*.tsbuildinfo
-
-# Optional
+# Environment variables
 .env
 .env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (si se usa)
+node_modules/
+
+# Coverage
+coverage/
+coverage.json
+
+# Gas reports
+gas-report.txt
+
+# Temporary files
+*.tmp
+*.temp
